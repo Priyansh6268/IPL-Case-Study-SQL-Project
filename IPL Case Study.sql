@@ -29,14 +29,20 @@ FROM batsman_stats;
 
 -- Q4 WHAT IS THE NUMBER OF MATCHES WON BY EACH TEAM BATTING FIRST VERSUS BATTING SECOND?
 
-select batting_first,count(*) as matches_won
-from(
-select case when win_by_runs>0 then team1
-else team2
-end as batting_first
-from matches
-where winner!="Tie") as batting_first_teams
-group by batting_first;
+WITH batting_first_teams AS (
+    SELECT 
+        CASE 
+            WHEN win_by_runs > 0 THEN team1
+            ELSE team2
+        END AS batting_first
+    FROM matches
+    WHERE winner != 'Tie'
+)
+SELECT 
+    batting_first,
+    COUNT(*) AS matches_won
+FROM batting_first_teams
+GROUP BY batting_first;
 
 -- Q5 WHICH BATSMAN HAS THE HIGHEST STRIKE RATE (MINIMUM 200 RUNS SCORED)?
 
@@ -63,25 +69,54 @@ from deliveries group by batsman;
 
 -- Q8 WHAT IS THE AVERAGE NUMBER OF BOUNDARIES HIT BY EACH TEAM IN EACH SEASON?
 
-select season,batting_team,avg(fours+sixes) as average_boundaries
-from(select season,match_id,batting_team,
-sum(case when batsman_runs=4 then 1 else 0 end)as fours,
-sum(case when batsman_runs=6 then 1 else 0 end) as sixes
-from deliveries,matches 
-where deliveries.match_id=matches.id
-group by season,match_id,batting_team) as team_bounsaries
-group by season,batting_team;
+WITH team_boundaries AS (
+    SELECT 
+        season,
+        match_id,
+        batting_team,
+        SUM(CASE WHEN batsman_runs = 4 THEN 1 ELSE 0 END) AS fours,
+        SUM(CASE WHEN batsman_runs = 6 THEN 1 ELSE 0 END) AS sixes
+    FROM deliveries
+    JOIN matches ON deliveries.match_id = matches.id
+    GROUP BY season, match_id, batting_team
+)
+SELECT 
+    season,
+    batting_team,
+    AVG(fours + sixes) AS average_boundaries
+FROM team_boundaries
+GROUP BY season, batting_team;
 
 -- Q9 WHAT IS THE HIGHEST PARTNERSHIP (RUNS) FOR EACH TEAM IN EACH SEASON?
 
-select season,batting_team,max(total_runs) as highest_partnership
-from(select season,batting_team,partnership,sum(total_runs) as total_runs
-from(select season,match_id,batting_team,over_no,
-sum(batsman_runs) as partnership,sum(batsman_runs)+sum(extra_runs) as total_runs
-from deliveries,matches where deliveries.match_id=matches.id
-group by season,match_id,batting_team,over_no) as team_scores
-group by season,batting_team,partnership) as highest_partnership
-group by season,batting_team; 
+WITH team_scores AS (
+    SELECT 
+        season,
+        match_id,
+        batting_team,
+        over_no,
+        SUM(batsman_runs) AS partnership,
+        SUM(batsman_runs) + SUM(extra_runs) AS total_runs
+    FROM deliveries
+    JOIN matches ON deliveries.match_id = matches.id
+    GROUP BY season, match_id, batting_team, over_no
+),
+team_partnerships AS (
+    SELECT 
+        season,
+        batting_team,
+        partnership,
+        SUM(total_runs) AS total_runs
+    FROM team_scores
+    GROUP BY season, batting_team, partnership
+)
+SELECT 
+    season,
+    batting_team,
+    MAX(total_runs) AS highest_partnership
+FROM team_partnerships
+GROUP BY season, batting_team;
+
 
 -- Q10 HOW MANY EXTRAS (WIDES & NO-BALLS) WERE BOWLED BY EACH TEAM IN EACH MATCH?
 
