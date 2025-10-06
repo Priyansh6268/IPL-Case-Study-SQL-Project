@@ -16,10 +16,16 @@ from matches group by season,winner;
 
 -- Q3 WHAT IS THE AVERAGE STRIKE RATE OF BATSMEN IN THE IPL DATASET?
 
-select avg(strike_rate) as average_strike_rate
-from(
-select batsman,(sum(total_runs)/count(ball))*100 as strike_rate
-from deliveries group by batsman)as batsman_stats;
+WITH batsman_stats AS (
+    SELECT 
+        batsman, 
+        (SUM(total_runs) / COUNT(ball)) * 100 AS strike_rate
+    FROM deliveries
+    GROUP BY batsman
+)
+SELECT AVG(strike_rate) AS average_strike_rate
+FROM batsman_stats;
+
 
 -- Q4 WHAT IS THE NUMBER OF MATCHES WON BY EACH TEAM BATTING FIRST VERSUS BATTING SECOND?
 
